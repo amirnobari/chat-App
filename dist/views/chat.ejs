@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Chat</title>
+	</head>
+	<body>
+		<h2>Chat Room</h2>
+		<ul id="messages"></ul>
+		<form id="form" action="">
+			<input id="message" autocomplete="off" />
+			<select id="targetUser">
+				<% for (let i = 0; i < users.length; i++) { %>
+				<option value="<%= users[i].username %>">
+					<%= users[i].username %>
+				</option>
+				<% } %>
+			</select>
+			<button type="button" onclick="sendMessage()">Send</button>
+			<button type="button" onclick="clearChat()">Clear Chat</button>
+		</form>
+		<ul id="userList"></ul>
+
+		<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+		<script
+			src="https://cdn.socket.io/4.7.3/socket.io.min.js"
+			integrity="sha384-+miq58Ltmjm+SSP5g8Ok6dpMO/6R4n8xe/x1Yj0Bdb9kiEz25LTnWv/GZQTRQamg"
+			crossorigin="anonymous"
+		></script>
+		<script src="../config/socket.js"></script>
+
+		<script>
+			var socket = io.connect()
+
+			function sendMessage() {
+				var message = document.getElementById('message').value
+				var targetUserElement = document.getElementById('targetUser')
+				var targetUser =
+					targetUserElement.options[targetUserElement.selectedIndex].value
+
+				console.log('Target User:', targetUser)
+
+				if (socket) {
+					var messagesList = document.getElementById('messages')
+					messagesList.innerHTML +=
+						'<li>You to ' + targetUser + ': ' + message + '</li>'
+					socket.emit('chat message', message, targetUser)
+				}
+
+				document.getElementById('message').value = ''
+			}
+
+			$('#form').submit(function (event) {
+				event.preventDefault()
+				sendMessage()
+				return false
+			})
+
+			socket.on('load messages', function (messages) {
+				// Load previous messages when connecting
+				messages.forEach(function (msg) {
+					$('#messages').append(
+						$('<li>').text(msg.sender + ': ' + msg.message)
+					)
+				})
+			})
+
+			socket.on('private chat message', function (data) {
+				// Append received messages
+				console.log(data)
+			})
+
+			socket.on('update user list', function (users) {
+				// Update the list of online users
+				var userList = $('#userList')
+				userList.empty()
+
+				users.forEach(function (user) {
+					userList.append($('<li>').text(user.username))
+				})
+			})
+			function clearChat() {
+				if (socket) {
+					socket.emit('clear chat')
+				}
+				$('#messages').empty() // Clear messages on the client side
+			}
+		</script>
+	</body>
+</html>
